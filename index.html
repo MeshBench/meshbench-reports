@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MeshBench reports</title>
+<meta name="description" content="Studies of MeshCore firmware behaviour, run on real firmware against a simulated radio and channel.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
+<style>
+  :root{--ground:#faf9f6;--card:#fff;--ink:#191d1c;--dim:#585f5d;--faint:#838a88;
+        --rule:#dcd9d1;--accent:#12695a}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0d1211;--card:#151b1a;--ink:#e6eae8;--dim:#98a3a0;--faint:#78827f;
+    --rule:#232c2a;--accent:#5cbfa8}}
+  :root[data-theme="dark"]{--ground:#0d1211;--card:#151b1a;--ink:#e6eae8;--dim:#98a3a0;
+    --faint:#78827f;--rule:#232c2a;--accent:#5cbfa8}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);margin:0;padding:0 22px 90px;
+       font:17px/1.62 Charter,"Bitstream Charter",Georgia,serif}
+  .wrap{max-width:840px;margin:0 auto}
+  code{font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace}
+  header{border-bottom:2px solid var(--ink);padding:64px 0 22px;margin-bottom:36px}
+  .eyebrow{font:12px ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--faint);margin-bottom:18px}
+  h1{font:600 clamp(28px,5vw,44px)/1.12 ui-monospace,Menlo,monospace;letter-spacing:-.02em;
+     margin:0 0 18px;max-width:20ch}
+  .stand{font-size:20px;line-height:1.5;color:var(--dim);max-width:60ch;margin:0}
+  h2{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
+     color:var(--accent);margin:52px 0 8px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+  p{margin:0 0 17px;max-width:66ch}
+  a{color:var(--accent)}
+  .report{display:block;background:var(--card);border:1px solid var(--rule);
+          border-left:4px solid var(--accent);padding:24px 26px;margin:22px 0;
+          text-decoration:none;color:inherit;transition:transform .12s ease}
+  .report:hover,.report:focus-visible{transform:translateX(3px)}
+  .report h3{font:600 21px/1.25 ui-monospace,Menlo,monospace;margin:0 0 10px;color:var(--ink)}
+  .report p{font-size:16.5px;color:var(--dim);margin:0 0 12px;max-width:64ch}
+  .meta{font:11px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;
+        color:var(--faint);display:flex;gap:16px;flex-wrap:wrap}
+  footer{margin-top:72px;padding-top:20px;border-top:2px solid var(--ink);
+         font:12px ui-monospace,Menlo,monospace;color:var(--faint);line-height:1.8}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">MeshBench</div>
+  <h1>Reports</h1>
+  <p class="stand">Studies of how MeshCore actually behaves, run on real firmware against a
+  simulated radio and a simulated channel.</p>
+</header>
+
+<h2>What this is</h2>
+
+<p>MeshBench compiles the real MeshCore application natively, one operating-system process per node,
+and runs it against a model of an SX1262 and a model of the air. The firmware and its radio driver
+are unmodified, so the decisions in these reports are the same decisions the code makes on hardware.
+What is simulated is everything the radio would have told it.</p>
+
+<p>That combination makes a particular kind of question answerable: what happens to this firmware
+when the hardware misbehaves in precisely this way, or when a setting changes across a whole network
+at once. Neither is something a fleet of real radios will do on request.</p>
+
+<h2>Reports</h2>
+
+<a class="report" href="1-17-listen-before-talk/">
+  <h3>Testing 1.17's listen-before-talk on a radio that lies</h3>
+  <p>MeshCore 1.17 rewrote listen-before-talk to survive LoRa interrupt flags that get stuck. On a
+  well-behaved radio the change is invisible. So we built a radio that sticks, and the two versions
+  separated by a factor of 43.</p>
+  <div class="meta"><span>MeshCore 1.16.0 vs 1.17.0</span><span>ScotMesh, 154 nodes</span>
+    <span>14 runs</span></div>
+</a>
+
+<footer>
+  Every figure is measured output from MeshBench: real MeshCore firmware making real decisions
+  against a simulated radio and channel. The interpretation and the prose are Claude Opus 5's.<br>
+  Results are a best case throughout. There is no multipath, the terrain is bare earth, and there is
+  no body loss, oscillator error, or interference beyond the mesh's own traffic. Every one of those
+  omissions makes real links worse.
+</footer>
+</div>
+</body>
+</html>

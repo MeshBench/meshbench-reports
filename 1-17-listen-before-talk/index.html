@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Testing 1.17 listen-before-talk on a radio that lies</title>
+<meta name="description" content="Injecting the stuck-IRQ fault MeshCore 1.17 was written to survive, and measuring the difference against 1.16.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
+</head>
+<body>
+
+<style>
+  :root{--ground:#faf9f6;--card:#fff;--sunk:#f0eee8;--ink:#191d1c;--dim:#585f5d;
+        --faint:#838a88;--rule:#dcd9d1;--accent:#12695a;--warn:#9a5a1e;--bad:#a33f2f;
+        --good:#3f6b2c;--measure:66ch}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;--dim:#98a3a0;
+    --faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;--bad:#e08a76;--good:#a7c77e}}
+  :root[data-theme="dark"]{--ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;
+    --dim:#98a3a0;--faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;
+    --bad:#e08a76;--good:#a7c77e}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);margin:0;padding:0 22px 90px;
+       font:17px/1.62 Charter,"Bitstream Charter",Georgia,serif}
+  .wrap{max-width:1060px;margin:0 auto}.col{max-width:var(--measure)}
+  code,th,.mono{font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace}
+  header{border-bottom:2px solid var(--ink);padding:52px 0 20px;margin-bottom:30px}
+  .eyebrow{font:12px ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--faint);display:flex;gap:18px;flex-wrap:wrap;margin-bottom:20px}
+  h1{font:600 clamp(27px,4.2vw,42px)/1.12 ui-monospace,Menlo,monospace;letter-spacing:-.02em;
+     margin:0 0 16px;max-width:24ch;text-wrap:balance}
+  .stand{font-size:20px;line-height:1.5;color:var(--dim);max-width:62ch;margin:0}
+  h2{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
+     color:var(--accent);margin:56px 0 4px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+  h3{font:600 17px ui-monospace,Menlo,monospace;margin:30px 0 6px}
+  p{margin:0 0 17px}
+  .box{background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--accent);
+       padding:22px 24px;margin:26px 0 10px}
+  .box.warn{border-left-color:var(--warn)}.box.bad{border-left-color:var(--bad)}
+  .box .lab{font:11px ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
+            color:var(--accent);display:block;margin-bottom:9px}
+  .box.warn .lab{color:var(--warn)}.box.bad .lab{color:var(--bad)}
+  .box p{margin:0;font-size:19px;max-width:60ch}
+  .box p+p{margin-top:12px;font-size:16.5px;color:var(--dim)}
+  table{border-collapse:collapse;width:100%;font:13.5px ui-monospace,Menlo,monospace;
+        font-variant-numeric:tabular-nums}
+  th{text-align:right;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+     font-weight:600;padding:0 12px 8px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+  th:first-child{text-align:left}
+  td{padding:7px 12px 7px 0;border-bottom:1px solid var(--rule);white-space:nowrap;text-align:right}
+  td:first-child{text-align:left}
+  tr.sep td{border-top:2px solid var(--rule)}
+  td.txt{font-family:Charter,Georgia,serif;white-space:normal;text-align:left}
+  .same{color:var(--faint)}.up{color:var(--bad)}.dn{color:var(--good)}
+  .scroll{overflow-x:auto}
+  figure{margin:26px 0;background:var(--card);border:1px solid var(--rule);padding:20px 22px 16px}
+  figcaption{font-size:14px;color:var(--dim);margin-top:13px;padding-top:11px;
+             border-top:1px solid var(--rule);max-width:78ch}
+  figcaption b{display:block;color:var(--ink);font:600 12px ui-monospace,Menlo,monospace;
+               letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+  pre{background:var(--sunk);border:1px solid var(--rule);border-left:3px solid var(--accent);
+      padding:13px 15px;overflow-x:auto;font-size:13px;line-height:1.55;margin:0 0 17px}
+  ul,ol{padding-left:21px;max-width:var(--measure)}li{margin-bottom:9px}
+  svg{display:block;max-width:100%;height:auto;color:var(--ink)}
+  footer{margin-top:64px;padding-top:18px;border-top:2px solid var(--ink);
+         font:12px ui-monospace,Menlo,monospace;color:var(--faint);line-height:1.7}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:120px;margin:6px 0 4px}
+  .bars div{background:var(--accent);width:46px;border-radius:2px 2px 0 0}
+  .barlab{display:flex;gap:3px;font:11px ui-monospace,Menlo,monospace;color:var(--faint)}
+  .barlab span{width:46px;text-align:center}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  blockquote{margin:24px 0;padding:18px 22px;background:var(--card);border:1px solid var(--rule);
+             border-left:4px solid var(--accent);max-width:70ch}
+  blockquote p{font-size:17px;margin:0 0 12px;font-style:italic;color:var(--ink)}
+  blockquote cite{display:block;font:11px ui-monospace,Menlo,monospace;font-style:normal;
+                  color:var(--faint);letter-spacing:.04em;margin-top:4px}
+  .box p{font-size:18px}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow"><span>MeshBench</span><span>ScotMesh, 154 nodes</span>
+    <span>MeshCore 1.16.0 vs 1.17.0</span><span>14 runs</span></div>
+  <h1>Testing 1.17's listen-before-talk on a radio that lies</h1>
+  <p class="stand">MeshCore 1.17 rewrote listen-before-talk to survive LoRa interrupt flags that get
+  stuck. On a well-behaved radio the change is invisible, and twelve runs found nothing at all. So we
+  built a radio that sticks. The two versions then separated by a factor of 43.</p>
+</header>
+
+<div class="col">
+
+<h2>What 1.17 claims</h2>
+
+<p>The release notes are specific about the problem:</p>
+
+<blockquote>
+  <p>"The 'listen-before-talk' code has had some pretty big changes, thanks to Taco. He has spent
+  weeks doing diagnostics, and even simulations, testing an improved scheme which involves handling
+  cases where the LoRa radio's IRQ flags get 'stuck', and also the big one being proper preamble
+  detection."</p>
+  <p>"He found that the new scheme performs on par with hardware CAD, but without the 4 second
+  lock-up glitches that CAD still suffers from."</p>
+  <cite>MeshCore v1.17.0 release notes, 9 August 2026. Changelog entry
+  <code>#2977 preamble and header IRQ rx timeout logic</code>.</cite>
+</blockquote>
+
+<p>That is a testable claim about a specific hardware misbehaviour, so we tested it.</p>
+
+<h2>The two implementations</h2>
+
+<p>1.16 decides the channel is busy in two lines. It asks the radio and believes the answer:</p>
+
+<pre><code>uint16_t irq = getIrqFlags();
+return (irq &amp; HEADER_VALID) || (irq &amp; PREAMBLE_DETECTED);</code></pre>
+
+<p>1.17 replaces that with a state machine which tracks how long each flag has been raised, and
+clears one that has been up implausibly long: 66 ms for a preamble, 3,934 ms for a payload, both
+derived from the airtime a real frame would take at the configured modulation.</p>
+
+<p>Those two agree in every case but one, an interrupt that fires with nothing on the air and then
+stays up. On a chip that never lies they are the same function. That is why earlier sweeps comparing
+1.16 and 1.17 produced byte-identical results twelve runs running, first on a stand-in radio and
+then again on the real driver. The change was not doing nothing. There was nothing for it to do.</p>
+
+<h2>The harness, and where the simulation starts</h2>
+
+<p>MeshBench runs real MeshCore firmware. The application from <code>examples/</code> is compiled
+natively for the host rather than for an nRF52, with no changes to the application or to its radio
+driver. Each node is a separate operating-system process with its own storage, identity and clock,
+talking to the harness over a bridge.</p>
+
+<p>What is simulated is everything below the driver.</p>
+
+</div>
+
+<figure>
+<svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img">
+<text x="26.0" y="22.0" font-size="11" fill="currentColor" opacity="0.55" text-anchor="start" font-family="ui-monospace,Menlo,monospace">the stack a packet passes through, top to bottom</text>
+<rect x="26" y="43.0" width="698" height="36.0" rx="4" fill="#2c6b60" fill-opacity="0.14" stroke="#2c6b60" stroke-width="1.4"/>
+<text x="40.0" y="61.5" font-size="13" fill="currentColor" opacity="0.95" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">MeshCore application</text>
+<text x="40.0" y="77.5" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start" font-family="ui-monospace,Menlo,monospace">examples/simple_repeater, unmodified</text>
+<text x="738.0" y="67.5" font-size="11" fill="#2c6b60" opacity="0.85" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">REAL</text>
+<rect x="26" y="88.0" width="698" height="36.0" rx="4" fill="#2c6b60" fill-opacity="0.14" stroke="#2c6b60" stroke-width="1.4"/>
+<text x="40.0" y="106.5" font-size="13" fill="currentColor" opacity="0.95" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">MeshCore radio wrapper</text>
+<text x="40.0" y="122.5" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start" font-family="ui-monospace,Menlo,monospace">CustomSX1262 / CustomSX1262Wrapper</text>
+<text x="738.0" y="112.5" font-size="11" fill="#2c6b60" opacity="0.85" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">REAL</text>
+<rect x="26" y="133.0" width="698" height="36.0" rx="4" fill="#2c6b60" fill-opacity="0.14" stroke="#2c6b60" stroke-width="1.4"/>
+<text x="40.0" y="151.5" font-size="13" fill="currentColor" opacity="0.95" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">RadioLib 7.6.0</text>
+<text x="40.0" y="167.5" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start" font-family="ui-monospace,Menlo,monospace">the actual SX126x driver, unmodified</text>
+<text x="738.0" y="157.5" font-size="11" fill="#2c6b60" opacity="0.85" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">REAL</text>
+<line x1="18" y1="172.0" x2="844" y2="172.0" stroke="#a1402b" stroke-width="2"/>
+<text x="844.0" y="165.0" font-size="10" fill="#a1402b" opacity="0.8" text-anchor="end" font-family="ui-monospace,Menlo,monospace">the firmware believes everything below this line</text>
+<rect x="26" y="178.0" width="698" height="36.0" rx="4" fill="#9b5524" fill-opacity="0.07" stroke="#9b5524" stroke-width="1.4" stroke-dasharray="5 3"/>
+<text x="40.0" y="196.5" font-size="13" fill="currentColor" opacity="0.95" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">RadioLibHal</text>
+<text x="40.0" y="212.5" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start" font-family="ui-monospace,Menlo,monospace">SimHal: pins, SPI, timing</text>
+<text x="738.0" y="202.5" font-size="11" fill="#9b5524" opacity="0.85" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">SIMULATED</text>
+<rect x="26" y="223.0" width="698" height="36.0" rx="4" fill="#9b5524" fill-opacity="0.07" stroke="#9b5524" stroke-width="1.4" stroke-dasharray="5 3"/>
+<text x="40.0" y="241.5" font-size="13" fill="currentColor" opacity="0.95" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">SX1262 silicon</text>
+<text x="40.0" y="257.5" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start" font-family="ui-monospace,Menlo,monospace">VirtualSX1262: opcodes, registers, IRQs</text>
+<text x="738.0" y="247.5" font-size="11" fill="#9b5524" opacity="0.85" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">SIMULATED</text>
+<rect x="26" y="268.0" width="698" height="36.0" rx="4" fill="#9b5524" fill-opacity="0.07" stroke="#9b5524" stroke-width="1.4" stroke-dasharray="5 3"/>
+<text x="40.0" y="286.5" font-size="13" fill="currentColor" opacity="0.95" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">The air</text>
+<text x="40.0" y="302.5" font-size="11" fill="currentColor" opacity="0.6" text-anchor="start" font-family="ui-monospace,Menlo,monospace">MeshBench engine: path loss, terrain, noise</text>
+<text x="738.0" y="292.5" font-size="11" fill="#9b5524" opacity="0.85" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">SIMULATED</text>
+</svg>
+  <figcaption><b>Figure 1: where the real firmware ends and the model begins</b>
+  Above the line is MeshCore's and RadioLib's own code, unmodified, making its own decisions. Below
+  it is a model: a virtual SX1262 that answers SPI opcodes and raises interrupts, a HAL that supplies
+  pins and simulated time, and a channel that sums waveforms, applies terrain and noise, and lets the
+  demodulator decide what survives. The firmware cannot tell the difference, which is the point and
+  also the caveat.</figcaption>
+</figure>
+
+<div class="col">
+<p>So when this report says 1.16 believed the channel was busy, that is a real decision taken by real
+firmware. What it was reacting to is a model of a chip and a model of the air. A virtual SX1262 is
+only as good as the errata we chose to give it.</p>
+
+<h2>The faulty variant</h2>
+
+<p>Real SX1262s sometimes latch a detection interrupt and hold it. The important detail is that
+clearing the flag still works. The flag is spurious, not stuck on write. A driver that clears a flag
+which has been up too long recovers; one that trusts it believes the channel is busy for ever.</p>
+
+<p>So the chip was given that fault, compiled in:</p>
+
+<pre><code>// The fault, on builds compiled to have it: a detection interrupt that fires
+// with nothing on the air and then stays up.
+//
+// Clearing it works perfectly well - which is the whole point.
+if (stuckIrqMs_ &gt; 0 &amp;&amp; mode_ == 1 &amp;&amp; nowMs_ &gt;= nextSpuriousMs_) {
+  irq_ |= kIrqPreambleDetected;
+  spuriousRaises_++;
+  nextSpuriousMs_ = nowMs_ + stuckIrqMs_;
+}</code></pre>
+
+<p>Built with <code>STUCK_IRQ_MS=1500</code>, so a receiving node has a false preamble-detected
+interrupt raised every 1.5 seconds. It is a build rather than a runtime switch, so an experiment
+selects it exactly like any other firmware version:</p>
+
+<pre><code>repeater-v1.17.0             a chip that behaves
+repeater-v1.17.0-faultyirq   a chip that latches its detection flags</code></pre>
+
+<p>The chip also counts what the firmware asked it: interrupt register reads, how many of those found
+a busy flag set, how long the flags were up, and how many spurious preambles it raised. That
+instrumentation is what separates a genuinely busy mesh from a chip that cries busy too readily.
+Without it, the second would look exactly like a finding about the firmware.</p>
+
+<h2>The scenario</h2>
+
+<p>154 nodes imported from ScotMesh's CoreScope deployment at their real positions and antenna
+heights: 136 repeaters and 18 companions. They run EU/UK (Narrow), which is 869.618 MHz, 62.5 kHz
+bandwidth, SF8, CR4/8, the preset ScotMesh actually uses.</p>
+
+<p>Six companions each send one message into <code>#sco</code>, fired together at 45 seconds, with 40
+seconds measured afterwards. Node storage is wiped between runs. Seeds 4417 and 9001, 14 runs in
+total, on MeshCore v1.16.0 and v1.17.0, each in a well-behaved and a <code>-faultyirq</code> build,
+over RadioLib 7.6.0.</p>
+
+</div>
+
+<h2>The result</h2>
+
+<figure>
+<svg viewBox="0 0 880 280" xmlns="http://www.w3.org/2000/svg" role="img">
+<text x="168.0" y="18.0" font-size="11" fill="currentColor" opacity="0.55" text-anchor="start" font-family="ui-monospace,Menlo,monospace">share of the firmware's own channel checks that found the air busy</text>
+<text x="156.0" y="60.2" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.16.0</text>
+<text x="156.0" y="74.2" font-size="10" fill="currentColor" opacity="0.45" text-anchor="end" font-family="ui-monospace,Menlo,monospace">radio behaves</text>
+<rect x="168" y="45.25" width="592" height="22" fill="currentColor" opacity="0.06" rx="3"/>
+<rect x="168" y="45.25" width="273.5" height="22" fill="#8fa39d" rx="3"/>
+<text x="451.5" y="61.2" font-size="13" fill="#8fa39d" opacity="0.9" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">46.2%</text>
+<text x="156.0" y="112.8" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.17.0</text>
+<text x="156.0" y="126.8" font-size="10" fill="currentColor" opacity="0.45" text-anchor="end" font-family="ui-monospace,Menlo,monospace">radio behaves</text>
+<rect x="168" y="97.75" width="592" height="22" fill="currentColor" opacity="0.06" rx="3"/>
+<rect x="168" y="97.75" width="277.6" height="22" fill="#8fa39d" rx="3"/>
+<text x="455.6" y="113.8" font-size="13" fill="#8fa39d" opacity="0.9" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">46.9%</text>
+<text x="156.0" y="165.2" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.16.0-faultyirq</text>
+<text x="156.0" y="179.2" font-size="10" fill="currentColor" opacity="0.45" text-anchor="end" font-family="ui-monospace,Menlo,monospace">radio latches</text>
+<rect x="168" y="150.25" width="592" height="22" fill="currentColor" opacity="0.06" rx="3"/>
+<rect x="168" y="150.25" width="567.7" height="22" fill="#a1402b" rx="3"/>
+<text x="745.7" y="166.2" font-size="13" fill="#a1402b" opacity="0.9" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">95.9%</text>
+<text x="156.0" y="217.8" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.17.0-faultyirq</text>
+<text x="156.0" y="231.8" font-size="10" fill="currentColor" opacity="0.45" text-anchor="end" font-family="ui-monospace,Menlo,monospace">radio latches</text>
+<rect x="168" y="202.75" width="592" height="22" fill="currentColor" opacity="0.06" rx="3"/>
+<rect x="168" y="202.75" width="207.8" height="22" fill="#4d6b2e" rx="3"/>
+<text x="385.8" y="218.8" font-size="13" fill="#4d6b2e" opacity="0.9" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">35.1%</text>
+</svg>
+  <figcaption><b>Figure 2: how often each build's own channel checks found the air busy</b>
+  On a radio that behaves, 1.16 and 1.17 are indistinguishable at 46.2% against 46.9%. That is the
+  null result every earlier sweep produced. Give both the fault and they separate completely: 1.16
+  finds the channel busy on 96% of checks, while 1.17 sits at 35%, lower than it manages on a working
+  radio.</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img">
+<text x="168.0" y="20.0" font-size="11" fill="currentColor" opacity="0.55" text-anchor="start" font-family="ui-monospace,Menlo,monospace">node-time spent believing the channel was busy (log scale)</text>
+<line x1="168.0" y1="34" x2="168.0" y2="254" stroke="currentColor" stroke-width="0.5" opacity="0.15"/>
+<text x="168.0" y="270.0" font-size="10" fill="currentColor" opacity="0.5" text-anchor="middle" font-family="ui-monospace,Menlo,monospace">100 k ms</text>
+<line x1="412.2" y1="34" x2="412.2" y2="254" stroke="currentColor" stroke-width="0.5" opacity="0.15"/>
+<text x="412.2" y="270.0" font-size="10" fill="currentColor" opacity="0.5" text-anchor="middle" font-family="ui-monospace,Menlo,monospace">1 M ms</text>
+<line x1="656.5" y1="34" x2="656.5" y2="254" stroke="currentColor" stroke-width="0.5" opacity="0.15"/>
+<text x="656.5" y="270.0" font-size="10" fill="currentColor" opacity="0.5" text-anchor="middle" font-family="ui-monospace,Menlo,monospace">10 M ms</text>
+<text x="156.0" y="64.8" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.16.0</text>
+<rect x="168" y="50.75" width="167.1" height="20" fill="#8fa39d" rx="3"/>
+<text x="345.1" y="65.8" font-size="12" fill="#8fa39d" opacity="0.9" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">483,026 ms</text>
+<text x="156.0" y="118.2" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.17.0</text>
+<rect x="168" y="104.25" width="166.6" height="20" fill="#8fa39d" rx="3"/>
+<text x="344.6" y="119.2" font-size="12" fill="#8fa39d" opacity="0.9" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">481,009 ms</text>
+<text x="156.0" y="171.8" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.16.0-faultyirq</text>
+<rect x="168" y="157.75" width="517.4" height="20" fill="#a1402b" rx="3"/>
+<text x="695.4" y="172.8" font-size="12" fill="#a1402b" opacity="0.9" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">13,140,556 ms</text>
+<text x="156.0" y="225.2" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.17.0-faultyirq</text>
+<rect x="168" y="211.25" width="116.8" height="20" fill="#4d6b2e" rx="3"/>
+<text x="294.8" y="226.2" font-size="12" fill="#4d6b2e" opacity="0.9" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">300,685 ms</text>
+<path d="M 820 167.75 L 826 167.75 L 826 221.25 L 820 221.25" fill="none" stroke="#a1402b" stroke-width="1.5" opacity="0.8"/>
+<text x="832.0" y="199.5" font-size="15" fill="#a1402b" opacity="1" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">43x</text>
+</svg>
+  <figcaption><b>Figure 3: node-time spent believing the channel was occupied</b>
+  Summed across all 154 nodes, log scale. Both builds received an identical 9,209 injected spurious
+  interrupts. 1.16 turned them into 13,140,556 ms of false busy, 1.17 into 300,685 ms. That factor of
+  43 is the listen-before-talk rewrite doing what the release notes claim.</figcaption>
+</figure>
+
+<div class="col">
+<div class="box">
+  <p>1.17 on a lying radio behaves better than 1.16 does on a working one. The recovery path is not a
+  marginal improvement. It removes the failure mode.</p>
+</div>
+
+<h2>And yet the mesh delivered the same</h2>
+</div>
+
+<figure>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>build</th><th>transmissions</th><th>to repeaters</th><th>to companions</th>
+        <th>collisions</th><th>airtime</th></tr></thead>
+      <tbody>
+        <tr><td>1.16.0</td><td>214</td><td>31.13%</td><td>43.14%</td><td>2,621</td><td>133 s</td></tr>
+        <tr><td>1.17.0</td><td class="same">214</td><td class="same">31.13%</td>
+            <td class="same">43.14%</td><td class="same">2,621</td><td class="same">133 s</td></tr>
+        <tr><td>1.16.0-faultyirq</td><td>144</td><td>25.37%</td><td>26.47%</td><td>1,169</td><td>100 s</td></tr>
+        <tr><td>1.17.0-faultyirq</td><td class="same">144</td><td class="same">25.37%</td>
+            <td class="same">26.47%</td><td class="same">1,169</td><td class="same">100 s</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figcaption><b>Table 1: delivery outcomes</b>
+  Within each radio condition the two versions are identical to the decimal. The fault costs the mesh
+  about a third of its traffic, but it costs 1.16 and 1.17 the same amount, despite one of them
+  spending 43 times longer paralysed.</figcaption>
+</figure>
+
+<div class="col">
+<p>1.16 is not silenced, because MeshCore's dispatcher has a backstop. When channel-activity
+detection has been busy for longer than <code>getCADFailMaxDuration()</code>, it raises
+<code>ERR_EVENT_CAD_TIMEOUT</code> and transmits regardless. 1.16 is rescued by that emergency
+override on almost every packet. 1.17 never needs it.</p>
+
+<p>That is a more useful finding than a throughput difference would have been. The fix is not about
+getting more packets out, because the mesh was going to get them out either way. It is about whether
+a node spends its life in a false busy state and escapes only through an error path. On a congested
+mesh the backstop hides that completely.</p>
+
+<p>Take the congestion away and it stops hiding.</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 880 180" xmlns="http://www.w3.org/2000/svg" role="img">
+<text x="168.0" y="28.0" font-size="11" fill="currentColor" opacity="0.55" text-anchor="start" font-family="ui-monospace,Menlo,monospace">two nodes, empty channel: node-time believing busy</text>
+<text x="156.0" y="61.0" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.16.0-faultyirq</text>
+<rect x="168" y="49" width="562.0" height="24" fill="#a1402b" rx="3"/>
+<text x="740.0" y="66.0" font-size="13" fill="#a1402b" opacity="0.95" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">17,463 ms</text>
+<text x="156.0" y="109.0" font-size="12" fill="currentColor" opacity="0.85" text-anchor="end" font-family="ui-monospace,Menlo,monospace">1.17.0-faultyirq</text>
+<rect x="168" y="97" width="2.0" height="24" fill="#4d6b2e" rx="3"/>
+<text x="180.0" y="114.0" font-size="13" fill="#4d6b2e" opacity="0.95" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-weight="600">55 ms</text>
+<text x="168.0" y="166.0" font-size="11" fill="#a1402b" opacity="0.6" text-anchor="start" font-family="ui-monospace,Menlo,monospace">317x. With no other traffic the backstop rarely fires and the fault is not masked</text>
+</svg>
+  <figcaption><b>Figure 4: two nodes, nothing else on the channel</b>
+  With no competing traffic the backstop rarely fires and the difference is stark, 17,463 ms against
+  55 ms. This is the number that would matter to a quiet real-world link, and it is the strongest
+  evidence in the study because it has no contention to confound it.</figcaption>
+</figure>
+
+<h2>What to trust here, and what not to</h2>
+
+<div class="col">
+
+<div class="box warn">
+  <p>Later work showed that firing six senders simultaneously makes this scenario chaotic.
+  Configurations that ought to be equivalent can land up to 20% apart, deterministically.</p>
+  <p>That does not touch the busy-time findings, which are per-node instrumentation counters rather
+  than between-arm aggregates. 96% against 35%, and 43 times, are far outside any such floor, and the
+  two-node case has no contention at all. It does mean the delivery figures in Table 1 should be read
+  as approximate. The drop from 214 to 144 is real; its precise size is not.</p>
+</div>
+
+<p>Other limits worth stating plainly. Two seeds is enough to see a 43-fold effect and not enough to
+characterise a small one. A virtual chip is a model of a chip: the fault injected here is our reading
+of a real erratum, a spurious latching preamble every 1.5 seconds, and real hardware may stick
+differently, more rarely, or in bursts. What this shows is that given that fault, 1.17 recovers and
+1.16 does not. It does not establish how often real radios do it.</p>
+
+<p>The model is also optimistic throughout. There is no multipath, the terrain is bare earth, and
+there is no body loss, oscillator error, or interference beyond the mesh's own traffic. Every one of
+those omissions makes real links worse, so absolute delivery figures are an upper bound.</p>
+
+<p>Worth admitting too: the fault model was wrong on the first attempt. The initial version made the
+chip refuse to clear its flags, but then no driver can recover, and both versions were equally stuck,
+which looked like another null result. The real erratum is that the flag latches spuriously and
+clearing still works. Getting that distinction right was the whole experiment.</p>
+
+<h2>What made this measurable</h2>
+
+<p>The finding is a good one, but the more interesting part is that it could be found at all. A
+43-fold difference in how long a node believes the air is occupied is invisible to every ordinary
+method. It does not show up in delivery statistics, it does not show up in a packet capture, and on
+working hardware it does not show up at all.</p>
+
+<p>Five things had to be true at once.</p>
+
+<p>The firmware is real. Not a model of MeshCore and not a reimplementation, but the application from
+<code>examples/</code> compiled for the host, one process per node, each with its own storage,
+identity and clock. Every decision in this report was taken by the same code that runs on hardware.</p>
+
+<p>So is the driver. MeshCore's <code>CustomSX1262</code> wrapper on RadioLib 7.6.0, unmodified, all
+the way down to the SPI transactions. That is what makes the question meaningful, because 1.16 and
+1.17 differ inside the driver, so anything that stubs the driver out cannot see the difference by
+construction.</p>
+
+<p>The hardware is a model we control, which means a hardware erratum becomes something you can
+specify. You cannot buy a radio that latches its preamble flag exactly every 1.5 seconds. Here you
+can compile one.</p>
+
+<p>The fault is a build, not a switch. <code>repeater-v1.17.0-faultyirq</code> sits beside
+<code>repeater-v1.17.0</code> and is selected the same way any version is, so "does this release
+survive a radio that sticks?" becomes a row in a matrix rather than a special project.</p>
+
+<p>And the chip reports what it was asked: interrupt reads, how many found a flag set, how long the
+flags were up, how many spurious ones were injected. Without those counters, 1.16's paralysis and a
+genuinely busy mesh look identical, and the wrong one of those is a finding about the firmware.</p>
+
+<p>Together that is the ability to ask a question no fleet of real radios can answer on demand. What
+happens to this firmware when the hardware misbehaves in precisely this way? And to get a number
+back, reproducibly, in fourteen runs.</p>
+
+<div class="box">
+  <p>MeshCore 1.17's listen-before-talk rewrite does what its release notes say. On a radio that
+  latches its detection interrupts, 1.17 performs better than 1.16 does on a radio that works.</p>
+  <p>On a busy mesh you would never know, because the CAD-timeout backstop hides it. That is itself
+  worth knowing, because it means the fault has been costing quiet links far more than anyone's
+  delivery statistics would ever have shown.</p>
+</div>
+
+</div>
+
+<footer>
+  Scenario: MeshBench, 154 nodes from ScotMesh CoreScope, 136 repeaters and 18 companions. EU/UK
+  (Narrow) 869.618 MHz, 62.5 kHz, SF8, CR4/8. Six companions sending one message each into #sco,
+  fired together at 45 s, 40 s measured. Node storage wiped between runs. Seeds 4417 and 9001, 14
+  runs.<br>
+  Firmware: MeshCore v1.16.0 and v1.17.0, simple_repeater and companion_radio, compiled natively and
+  unmodified, over RadioLib 7.6.0 on a virtual SX1262. Faulty builds compiled with
+  <code>STUCK_IRQ_MS=1500</code>.<br>
+  Provenance: the measurements are real output from MeshBench, real MeshCore firmware making real
+  decisions against a simulated radio and channel. The data was produced by MeshBench; the
+  interpretation, the framing and the prose are Claude Opus 5's. Figures are drawn from the harness's
+  own instrumentation counters and event ledger.
+</footer>
+</div>
+
+</body>
+</html>
