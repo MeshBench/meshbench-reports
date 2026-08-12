@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The negative control that failed, and what it exposed - MeshBench</title></head>
+<body>
+<style>
+  :root{--ground:#faf9f6;--card:#fff;--sunk:#f0eee8;--ink:#191d1c;--dim:#585f5d;
+        --faint:#838a88;--rule:#dcd9d1;--accent:#12695a;--warn:#9a5a1e;--bad:#a33f2f;
+        --good:#3f6b2c;--measure:66ch}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;--dim:#98a3a0;
+    --faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;--bad:#e08a76;--good:#a7c77e}}
+  :root[data-theme="dark"]{--ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;
+    --dim:#98a3a0;--faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;
+    --bad:#e08a76;--good:#a7c77e}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);margin:0;padding:0 22px 90px;
+       font:17px/1.62 Charter,"Bitstream Charter",Georgia,serif}
+  .wrap{max-width:1060px;margin:0 auto}.col{max-width:var(--measure)}
+  code,th,.mono{font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace}
+  header{border-bottom:2px solid var(--ink);padding:52px 0 20px;margin-bottom:30px}
+  .eyebrow{font:12px ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--faint);display:flex;gap:18px;flex-wrap:wrap;margin-bottom:20px}
+  h1{font:600 clamp(27px,4.2vw,42px)/1.12 ui-monospace,Menlo,monospace;letter-spacing:-.02em;
+     margin:0 0 16px;max-width:24ch;text-wrap:balance}
+  .stand{font-size:20px;line-height:1.5;color:var(--dim);max-width:62ch;margin:0}
+  h2{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
+     color:var(--accent);margin:56px 0 4px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+  h3{font:600 17px ui-monospace,Menlo,monospace;margin:30px 0 6px}
+  p{margin:0 0 17px}
+  .box{background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--accent);
+       padding:22px 24px;margin:26px 0 10px}
+  .box.warn{border-left-color:var(--warn)}.box.bad{border-left-color:var(--bad)}
+  .box .lab{font:11px ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
+            color:var(--accent);display:block;margin-bottom:9px}
+  .box.warn .lab{color:var(--warn)}.box.bad .lab{color:var(--bad)}
+  .box p{margin:0;font-size:19px;max-width:60ch}
+  .box p+p{margin-top:12px;font-size:16.5px;color:var(--dim)}
+  table{border-collapse:collapse;width:100%;font:13.5px ui-monospace,Menlo,monospace;
+        font-variant-numeric:tabular-nums}
+  th{text-align:right;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+     font-weight:600;padding:0 12px 8px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+  th:first-child{text-align:left}
+  td{padding:7px 12px 7px 0;border-bottom:1px solid var(--rule);white-space:nowrap;text-align:right}
+  td:first-child{text-align:left}
+  tr.sep td{border-top:2px solid var(--rule)}
+  td.txt{font-family:Charter,Georgia,serif;white-space:normal;text-align:left}
+  .same{color:var(--faint)}.up{color:var(--bad)}.dn{color:var(--good)}
+  .scroll{overflow-x:auto}
+  figure{margin:26px 0;background:var(--card);border:1px solid var(--rule);padding:20px 22px 16px}
+  figcaption{font-size:14px;color:var(--dim);margin-top:13px;padding-top:11px;
+             border-top:1px solid var(--rule);max-width:78ch}
+  figcaption b{display:block;color:var(--ink);font:600 12px ui-monospace,Menlo,monospace;
+               letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+  pre{background:var(--sunk);border:1px solid var(--rule);border-left:3px solid var(--accent);
+      padding:13px 15px;overflow-x:auto;font-size:13px;line-height:1.55;margin:0 0 17px}
+  ul,ol{padding-left:21px;max-width:var(--measure)}li{margin-bottom:9px}
+  svg{display:block;max-width:100%;height:auto;color:var(--ink)}
+  footer{margin-top:64px;padding-top:18px;border-top:2px solid var(--ink);
+         font:12px ui-monospace,Menlo,monospace;color:var(--faint);line-height:1.7}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:120px;margin:6px 0 4px}
+  .bars div{background:var(--accent);width:46px;border-radius:2px 2px 0 0}
+  .barlab{display:flex;gap:3px;font:11px ui-monospace,Menlo,monospace;color:var(--faint)}
+  .barlab span{width:46px;text-align:center}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  blockquote{margin:24px 0;padding:18px 22px;background:var(--card);border:1px solid var(--rule);
+             border-left:4px solid var(--accent);max-width:70ch}
+  blockquote p{font-size:17px;margin:0 0 12px;font-style:italic;color:var(--ink)}
+  blockquote cite{display:block;font:11px ui-monospace,Menlo,monospace;font-style:normal;
+                  color:var(--faint);letter-spacing:.04em;margin-top:4px}
+  .box p{font-size:18px}
+</style>
+<div class="wrap">
+<header>
+  <div class="eyebrow"><span>MeshBench</span><span>ScotMesh and Ireland, 311 nodes</span>
+    <span>Protocol idea 03 of 8</span><span>4 runs</span><span>12 August 2026</span></div>
+  <h1>The negative control that failed, and what it exposed</h1>
+  <p class="stand">A repeater's loop detection counts how many times its own hash appears in a packet's path, so a cycle that does not pass through the node checking is invisible to it. Rejecting any repeated hash was pre-registered as a negative control that should change nothing. It cost eighteen points of reach, and the reason is a one byte hash.</p>
+</header>
+<div class="col">
+
+<h2>Where it comes from</h2>
+<p><code>MyMesh::isLooped()</code> walks the path counting matches against <code>self_id</code>, and rejects when the count reaches a threshold indexed by path hash size. At a three byte hash all three loop-detection settings are 1 and therefore identical by construction, which is a separate finding from an earlier study.</p><p>The gap is that a packet going round a cycle A to B to C to A is only detected by A. B and C forward it happily.</p>
+
+<h2>The change</h2>
+<p>After the existing check, also reject a packet whose path contains any hash twice, whoever it belongs to.</p>
+<pre><code>for (int i = 0; i &lt; count; i++) {
+  for (int j = i + 1; j &lt; count; j++) {
+    if (memcmp(&amp;path[i * hash_size], &amp;path[j * hash_size], hash_size) == 0) {
+      return false;   // a cycle, even if we are not in it
+    }
+  }
+}</code></pre>
+<p><b>Cost.</b> O(n squared) over at most 63 entries, on a path that is usually under five.</p>
+
+<figure><svg viewBox="0 0 700 250" role="img" aria-label="Chance that a path of k hops contains two identical one-byte hashes">
+<text x="0" y="14" font-size="12" fill="var(--dim)">chance a legitimate path contains two identical hashes, by hop count</text>
+<rect x="60" y="205" width="46" height="5" fill="var(--bad)" opacity=".8"/><text x="83" y="200" font-size="11" fill="var(--ink)" text-anchor="middle">2%</text><rect x="135" y="197" width="46" height="13" fill="var(--bad)" opacity=".8"/><text x="158" y="192" font-size="11" fill="var(--ink)" text-anchor="middle">6%</text><rect x="210" y="187" width="46" height="23" fill="var(--bad)" opacity=".8"/><text x="233" y="182" font-size="11" fill="var(--ink)" text-anchor="middle">10%</text><rect x="285" y="174" width="46" height="36" fill="var(--bad)" opacity=".8"/><text x="308" y="169" font-size="11" fill="var(--ink)" text-anchor="middle">16%</text><rect x="360" y="159" width="46" height="51" fill="var(--bad)" opacity=".8"/><text x="383" y="154" font-size="11" fill="var(--ink)" text-anchor="middle">23%</text><rect x="435" y="125" width="46" height="85" fill="var(--bad)" opacity=".8"/><text x="458" y="120" font-size="11" fill="var(--ink)" text-anchor="middle">38%</text><rect x="510" y="91" width="46" height="119" fill="var(--bad)" opacity=".8"/><text x="533" y="86" font-size="11" fill="var(--ink)" text-anchor="middle">53%</text><rect x="585" y="60" width="46" height="150" fill="var(--bad)" opacity=".8"/><text x="608" y="55" font-size="11" fill="var(--ink)" text-anchor="middle">67%</text>
+<line x1="60" y1="210" x2="660" y2="210" stroke="var(--rule)"/>
+<text x="60" y="232" font-size="11" fill="var(--faint)">4 hops</text>
+<text x="620" y="232" font-size="11" fill="var(--faint)">24 hops</text>
+<text x="0" y="60" font-size="11" fill="var(--faint)">67%</text>
+<text x="0" y="205" font-size="11" fill="var(--faint)">0%</text>
+</svg><figcaption><b>Why the negative control failed</b>A path hash is one byte while a path is
+shorter than 64 hops, so 311 nodes share 256 possible values. Rejecting any repeated hash rejects
+a legitimate path this often, and the deeper the flood the worse it gets. The far hops are exactly
+the ones that carry reach.</figcaption></figure>
+
+<h2>What was predicted, before running it</h2>
+<p>Little or no effect. An earlier study found <b>0 of 8,270 observed paths</b> contained a repeated hash. The arm was included specifically so that a change in the numbers would tell us the harness was generating loops the real network does not have.</p>
+
+<h2>What happened</h2>
+<div class="box bad"><span class="lab">The control failed, and the firmware is the reason</span><p>Reach fell from 56.2% to 38.0%, eighteen points, with transmissions down 13.8% and receptions down 18%. A negative control that moves this much normally means the harness is wrong. This time the harness is fine and the idea is unsafe.</p></div>
+<div class="scroll"><table>
+<thead><tr><th>Metric</th><th>Control</th><th>Idea 03</th><th>Change</th></tr></thead>
+<tbody><tr><td>Transmissions</td><td>573</td><td>494</td><td class="dn">-13.8%</td></tr><tr><td>Receptions</td><td>4830</td><td>3963</td><td class="up">-18.0%</td></tr><tr><td>Reach, %</td><td>56.2</td><td>38</td><td class="up">-32.4%</td></tr><tr><td>Collisions</td><td>7293</td><td>6386</td><td class="dn">-12.4%</td></tr><tr><td>Airtime, s</td><td>540.3</td><td>527.2</td><td class="dn">-2.4%</td></tr></tbody></table></div>
+<figure><svg viewBox="0 0 700 196" role="img" aria-label="control against idea 03"><text x="120" y="188" font-size="11" fill="var(--faint)">upper bar: control v1.17.0   lower bar: idea 03   green means the change went the way you would want</text><text x="0" y="12" font-size="11.5" fill="var(--dim)">Transmissions</text><rect x="120" y="2" width="420" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="16" width="362" height="11" fill="var(--good)"/><text x="548" y="12" font-size="11" fill="var(--faint)">573</text><text x="548" y="26" font-size="11" fill="var(--ink)">494  (-13.8%)</text><text x="0" y="46" font-size="11.5" fill="var(--dim)">Receptions</text><rect x="120" y="36" width="420" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="50" width="345" height="11" fill="var(--bad)"/><text x="548" y="46" font-size="11" fill="var(--faint)">4830</text><text x="548" y="60" font-size="11" fill="var(--ink)">3963  (-18.0%)</text><text x="0" y="80" font-size="11.5" fill="var(--dim)">Reach, %</text><rect x="120" y="70" width="420" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="84" width="284" height="11" fill="var(--bad)"/><text x="548" y="80" font-size="11" fill="var(--faint)">56.2</text><text x="548" y="94" font-size="11" fill="var(--ink)">38  (-32.4%)</text><text x="0" y="114" font-size="11.5" fill="var(--dim)">Collisions</text><rect x="120" y="104" width="420" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="118" width="368" height="11" fill="var(--good)"/><text x="548" y="114" font-size="11" fill="var(--faint)">7293</text><text x="548" y="128" font-size="11" fill="var(--ink)">6386  (-12.4%)</text><text x="0" y="148" font-size="11.5" fill="var(--dim)">Airtime, s</text><rect x="120" y="138" width="420" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="152" width="410" height="11" fill="var(--good)"/><text x="548" y="148" font-size="11" fill="var(--faint)">540.3</text><text x="548" y="162" font-size="11" fill="var(--ink)">527.2  (-2.4%)</text></svg><figcaption><b>Every metric, both arms</b>Bars are scaled per row, so read the percentages rather than the lengths across rows.</figcaption></figure>
+
+<h2>Why it came out that way</h2>
+<p><code>getPathHashSize()</code> is <code>(path_len &gt;&gt; 6) + 1</code>, so every path shorter than 64 hops uses a <b>one byte</b> hash. On this network 311 nodes share 256 possible values, and two different nodes having the same hash byte is not an edge case, it is the normal state of affairs.</p><p>The rule 'reject any repeated hash' therefore rejects legitimate paths whenever two distinct nodes along the path happen to collide. The chart above is the birthday calculation: a four hop path is rejected 2.3% of the time, a twelve hop path 23% of the time, a twenty hop path more than half the time.</p><p>That is exactly the shape of the measurement. Transmissions fell moderately, 13.8%, because short paths near the origin mostly survive. Reach collapsed by eighteen points because the deep paths, the ones that carry a flood to the far side of the network, are precisely the ones the rule kills. The far hops are where reach lives.</p><p>So the negative control did its job, just not in the way it was designed to. It was there to catch a harness generating fictitious loops. Instead it caught a real property of the protocol: <b>path hashes are too short to support any rule of the form 'this hash appeared twice'</b> beyond the one the firmware already has, which compares against the node's own identity and is therefore immune to collisions with other nodes.</p><p>This is worth knowing beyond this idea. Any future proposal that reasons about identity from a path hash inherits the same defect at any path length under 64 hops.</p>
+
+<h2>Should it be adopted?</h2>
+<div class="box bad"><span class="lab">No, and the reason generalises</span><p>No. The rule is unsound at the hash width the protocol actually uses, and no amount of tuning fixes that. If cycle detection beyond a node's own identity is wanted, it needs a wider hash, which costs airtime on every packet, and the case for that would have to be made from evidence that cycles happen at all. The available evidence says they do not: zero repeats in 8,270 observed real paths.</p></div>
+<h3>For</h3>
+<ul><li>It does detect cycles that the current check cannot see, which was the stated gap.</li><li>Cheap to compute on realistic path lengths.</li><li>As an experiment it produced the most useful finding in the series: it put a number on how unreliable a one byte path hash is as an identity.</li></ul>
+<h3>Against</h3>
+<ul><li>Eighteen points of reach on a real topology.</li><li>The false positive rate is a property of the hash width, not of the implementation, so it cannot be tuned away.</li><li>It gets worse as paths get longer, which means it degrades exactly where a mesh needs to work hardest.</li><li>The problem it solves has never been observed in real traffic.</li></ul>
+
+<h2>How it was run</h2>
+<p>The 311 node Scotland and Ireland import, built from live CoreScope with the transport regions
+the real nodes hold. Both arms run in the same sweep, on the same two seeds, against the same
+network, with only the repeater firmware differing. Four senders, spread rather than adjacent, so
+they contend with the mesh rather than with each other. Ninety seconds of simulated time per run.</p>
+<p>Node storage is wiped before the sweep. A node keeps its preferences between runs exactly as
+hardware does, so one that has run before loads its stored value and never reaches a changed
+default: both arms then return identical numbers and the change looks inert.</p>
+<p>The control is MeshCore at the commit <code>repeater-v1.17.0</code> points at, built by the same
+script as the arm. <b>It produced 573 transmissions and 4,830 receptions in every sweep of this
+series</b>, seven sweeps over three hours. That is the reproducibility check, and without it none of
+the deltas on this page would be attributable to the firmware.</p>
+
+<h2>Limits</h2>
+<p>Two seeds. The plus or minus twenty per cent figure quoted elsewhere for this simulator belongs
+to a different measurement, reach under contention from around eight simultaneous senders; it is a
+property of that contention rather than of the simulator, and it is not quoted here as though it
+were universal. What can be said is that the control repeated exactly, so a difference between arms
+is the firmware. Two seeds is still a thin basis for a small delta, and anything under a few per
+cent on this page should be read as unproven rather than as a result.</p>
+<p>The simulator is kinder than the air: no multipath, no body loss, no oscillator error, no
+interference beyond the mesh's own traffic. Every one of those omissions makes real links worse, so
+the absolute numbers are a best case and the comparison is the finding.</p>
+<p>The MeshCore branch carrying this change is local and is not pushed anywhere.</p>
+
+</div>
+<footer>MeshBench, 12 August 2026. Real MeshCore firmware, one operating-system process per node, against
+a sample accurate LoRa channel and bare-earth terrain. Figures are measured output; the
+interpretation and the prose are Claude Opus 5's.</footer>
+</div></body></html>
