@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Not forcing a transmit through a busy channel - MeshBench</title></head>
+<body>
+<style>
+  :root{--ground:#faf9f6;--card:#fff;--sunk:#f0eee8;--ink:#191d1c;--dim:#585f5d;
+        --faint:#838a88;--rule:#dcd9d1;--accent:#12695a;--warn:#9a5a1e;--bad:#a33f2f;
+        --good:#3f6b2c;--measure:66ch}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;--dim:#98a3a0;
+    --faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;--bad:#e08a76;--good:#a7c77e}}
+  :root[data-theme="dark"]{--ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;
+    --dim:#98a3a0;--faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;
+    --bad:#e08a76;--good:#a7c77e}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);margin:0;padding:0 22px 90px;
+       font:17px/1.62 Charter,"Bitstream Charter",Georgia,serif}
+  .wrap{max-width:1060px;margin:0 auto}.col{max-width:var(--measure)}
+  code,th,.mono{font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace}
+  header{border-bottom:2px solid var(--ink);padding:52px 0 20px;margin-bottom:30px}
+  .eyebrow{font:12px ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--faint);display:flex;gap:18px;flex-wrap:wrap;margin-bottom:20px}
+  h1{font:600 clamp(27px,4.2vw,42px)/1.12 ui-monospace,Menlo,monospace;letter-spacing:-.02em;
+     margin:0 0 16px;max-width:24ch;text-wrap:balance}
+  .stand{font-size:20px;line-height:1.5;color:var(--dim);max-width:62ch;margin:0}
+  h2{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
+     color:var(--accent);margin:56px 0 4px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+  h3{font:600 17px ui-monospace,Menlo,monospace;margin:30px 0 6px}
+  p{margin:0 0 17px}
+  .box{background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--accent);
+       padding:22px 24px;margin:26px 0 10px}
+  .box.warn{border-left-color:var(--warn)}.box.bad{border-left-color:var(--bad)}
+  .box .lab{font:11px ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
+            color:var(--accent);display:block;margin-bottom:9px}
+  .box.warn .lab{color:var(--warn)}.box.bad .lab{color:var(--bad)}
+  .box p{margin:0;font-size:19px;max-width:60ch}
+  .box p+p{margin-top:12px;font-size:16.5px;color:var(--dim)}
+  table{border-collapse:collapse;width:100%;font:13.5px ui-monospace,Menlo,monospace;
+        font-variant-numeric:tabular-nums}
+  th{text-align:right;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+     font-weight:600;padding:0 12px 8px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+  th:first-child{text-align:left}
+  td{padding:7px 12px 7px 0;border-bottom:1px solid var(--rule);white-space:nowrap;text-align:right}
+  td:first-child{text-align:left}
+  tr.sep td{border-top:2px solid var(--rule)}
+  td.txt{font-family:Charter,Georgia,serif;white-space:normal;text-align:left}
+  .same{color:var(--faint)}.up{color:var(--bad)}.dn{color:var(--good)}
+  .scroll{overflow-x:auto}
+  figure{margin:26px 0;background:var(--card);border:1px solid var(--rule);padding:20px 22px 16px}
+  figcaption{font-size:14px;color:var(--dim);margin-top:13px;padding-top:11px;
+             border-top:1px solid var(--rule);max-width:78ch}
+  figcaption b{display:block;color:var(--ink);font:600 12px ui-monospace,Menlo,monospace;
+               letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+  pre{background:var(--sunk);border:1px solid var(--rule);border-left:3px solid var(--accent);
+      padding:13px 15px;overflow-x:auto;font-size:13px;line-height:1.55;margin:0 0 17px}
+  ul,ol{padding-left:21px;max-width:var(--measure)}li{margin-bottom:9px}
+  svg{display:block;max-width:100%;height:auto;color:var(--ink)}
+  footer{margin-top:64px;padding-top:18px;border-top:2px solid var(--ink);
+         font:12px ui-monospace,Menlo,monospace;color:var(--faint);line-height:1.7}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:120px;margin:6px 0 4px}
+  .bars div{background:var(--accent);width:46px;border-radius:2px 2px 0 0}
+  .barlab{display:flex;gap:3px;font:11px ui-monospace,Menlo,monospace;color:var(--faint)}
+  .barlab span{width:46px;text-align:center}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  blockquote{margin:24px 0;padding:18px 22px;background:var(--card);border:1px solid var(--rule);
+             border-left:4px solid var(--accent);max-width:70ch}
+  blockquote p{font-size:17px;margin:0 0 12px;font-style:italic;color:var(--ink)}
+  blockquote cite{display:block;font:11px ui-monospace,Menlo,monospace;font-style:normal;
+                  color:var(--faint);letter-spacing:.04em;margin-top:4px}
+  .box p{font-size:18px}
+</style>
+<div class="wrap">
+<header>
+  <div class="eyebrow"><span>MeshBench</span><span>ScotMesh and Ireland, 311 nodes</span>
+    <span>Protocol idea 08 of 8</span><span>4 runs</span><span>12 August 2026</span></div>
+  <h1>Not forcing a transmit through a busy channel</h1>
+  <p class="stand">When listen-before-talk has reported the channel busy for too long, MeshCore transmits anyway on the theory that the radio may be stuck. On a busy mesh the channel is not stuck, it is busy. Removing the forced transmit cost nothing in delivery and bought a measurable reduction in collisions.</p>
+</header>
+<div class="col">
+
+<h2>Where it comes from</h2>
+<p><code>Dispatcher::checkSend()</code> tracks how long the channel has been reported busy. Past <code>getCADFailMaxDuration()</code> it sets <code>ERR_EVENT_CAD_TIMEOUT</code> and falls through to the transmit, on the assumption that a radio reporting busy for that long is misbehaving.</p><p>That assumption is right on a quiet band with a faulty radio, and wrong on a busy mesh where the channel genuinely is occupied.</p>
+
+<h2>The change</h2>
+<p>Back off and retry instead of transmitting. The error flag is still raised, so a genuinely stuck radio remains visible in diagnostics.</p>
+<pre><code>_err_flags |= ERR_EVENT_CAD_TIMEOUT;
+cad_busy_start = 0;
+next_tx_time = futureMillis(getCADFailRetryDelay());
+return;                        // upstream falls through and transmits here</code></pre>
+<p><b>Cost.</b> None.</p>
+
+
+
+<h2>What was predicted, before running it</h2>
+<p>Fewer collisions under congestion, and no effect at all when the channel is not contended.</p>
+
+<h2>What happened</h2>
+<div class="box "><span class="lab">Distinct, and in the right direction</span><p>Collisions fell 4.0% and transmissions 3.5%, with reach down 3.9 points and airtime up 13.9%. The only arm besides ideas 01 and 02 to produce numbers of its own, and the only one whose condition actually occurred.</p></div>
+<div class="scroll"><table>
+<thead><tr><th>Metric</th><th>Control</th><th>Idea 08</th><th>Change</th></tr></thead>
+<tbody><tr><td>Transmissions</td><td>573</td><td>553</td><td class="dn">-3.5%</td></tr><tr><td>Receptions</td><td>4830</td><td>4618</td><td class="up">-4.4%</td></tr><tr><td>Reach, %</td><td>56.2</td><td>52.3</td><td class="up">-7.0%</td></tr><tr><td>Collisions</td><td>7293</td><td>7004</td><td class="dn">-4.0%</td></tr><tr><td>Airtime, s</td><td>540.3</td><td>615.3</td><td class="up">+13.9%</td></tr></tbody></table></div>
+<figure><svg viewBox="0 0 700 196" role="img" aria-label="control against idea 08"><text x="120" y="188" font-size="11" fill="var(--faint)">upper bar: control v1.17.0   lower bar: idea 08   green means the change went the way you would want</text><text x="0" y="12" font-size="11.5" fill="var(--dim)">Transmissions</text><rect x="120" y="2" width="420" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="16" width="405" height="11" fill="var(--good)"/><text x="548" y="12" font-size="11" fill="var(--faint)">573</text><text x="548" y="26" font-size="11" fill="var(--ink)">553  (-3.5%)</text><text x="0" y="46" font-size="11.5" fill="var(--dim)">Receptions</text><rect x="120" y="36" width="420" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="50" width="402" height="11" fill="var(--bad)"/><text x="548" y="46" font-size="11" fill="var(--faint)">4830</text><text x="548" y="60" font-size="11" fill="var(--ink)">4618  (-4.4%)</text><text x="0" y="80" font-size="11.5" fill="var(--dim)">Reach, %</text><rect x="120" y="70" width="420" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="84" width="390" height="11" fill="var(--bad)"/><text x="548" y="80" font-size="11" fill="var(--faint)">56.2</text><text x="548" y="94" font-size="11" fill="var(--ink)">52.3  (-7.0%)</text><text x="0" y="114" font-size="11.5" fill="var(--dim)">Collisions</text><rect x="120" y="104" width="420" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="118" width="403" height="11" fill="var(--good)"/><text x="548" y="114" font-size="11" fill="var(--faint)">7293</text><text x="548" y="128" font-size="11" fill="var(--ink)">7004  (-4.0%)</text><text x="0" y="148" font-size="11.5" fill="var(--dim)">Airtime, s</text><rect x="120" y="138" width="369" height="11" fill="var(--faint)" opacity=".55"/><rect x="120" y="152" width="420" height="11" fill="var(--bad)"/><text x="548" y="148" font-size="11" fill="var(--faint)">540.3</text><text x="548" y="162" font-size="11" fill="var(--ink)">615.3  (+13.9%)</text></svg><figcaption><b>Every metric, both arms</b>Bars are scaled per row, so read the percentages rather than the lengths across rows.</figcaption></figure>
+
+<h2>Why it came out that way</h2>
+<p>Unlike ideas 05, 06 and 07, this arm's code path was reached: the channel on a 311 node network with four simultaneous originators does report busy for long stretches, which is exactly the condition upstream treats as a stuck radio.</p><p>Removing the forced transmit removes transmissions that were, by definition, sent into a channel known to be occupied. Collisions fell accordingly. This is the mechanism working as described.</p><p>The airtime rise is the cost and needs saying plainly: deferring rather than forcing means packets are transmitted later, and a run of fixed length ends with more of them still in flight and retried. Reach fell by nearly four points for the same reason.</p><p>So the trade is spectrum efficiency against latency. On a band where airtime is scarce, fewer collisions for slightly slower delivery is usually the right side of that trade, but it is a trade rather than a free improvement.</p>
+
+<h2>Should it be adopted?</h2>
+<div class="box "><span class="lab">Yes, with a caveat about the original intent</span><p>Adopt, but keep the diagnostic. The forced transmit exists to break a deadlock with a wedged radio, and that is a real failure mode on real hardware. The right change is the one measured here plus a bound: back off, and force only after several consecutive timeouts rather than the first, so a genuinely stuck radio still recovers while a busy channel is respected.</p></div>
+<h3>For</h3>
+<ul><li>Fewer collisions, measured, on the network where the condition actually occurs.</li><li>Fewer transmissions for nearly the same delivery.</li><li>No runtime cost and no new state.</li><li>Keeps the error flag, so the stuck-radio case remains diagnosable.</li></ul>
+<h3>Against</h3>
+<ul><li>Reach fell 3.9 points and airtime rose 13.9% over a fixed-length run.</li><li>It removes the recovery path for a radio whose interrupt flags are genuinely stuck, which is the case the original code was written for.</li><li>The effect depends on congestion, so a quiet network sees nothing.</li></ul>
+
+<h2>How it was run</h2>
+<p>The 311 node Scotland and Ireland import, built from live CoreScope with the transport regions
+the real nodes hold. Both arms run in the same sweep, on the same two seeds, against the same
+network, with only the repeater firmware differing. Four senders, spread rather than adjacent, so
+they contend with the mesh rather than with each other. Ninety seconds of simulated time per run.</p>
+<p>Node storage is wiped before the sweep. A node keeps its preferences between runs exactly as
+hardware does, so one that has run before loads its stored value and never reaches a changed
+default: both arms then return identical numbers and the change looks inert.</p>
+<p>The control is MeshCore at the commit <code>repeater-v1.17.0</code> points at, built by the same
+script as the arm. <b>It produced 573 transmissions and 4,830 receptions in every sweep of this
+series</b>, seven sweeps over three hours. That is the reproducibility check, and without it none of
+the deltas on this page would be attributable to the firmware.</p>
+
+<h2>Limits</h2>
+<p>Two seeds. The plus or minus twenty per cent figure quoted elsewhere for this simulator belongs
+to a different measurement, reach under contention from around eight simultaneous senders; it is a
+property of that contention rather than of the simulator, and it is not quoted here as though it
+were universal. What can be said is that the control repeated exactly, so a difference between arms
+is the firmware. Two seeds is still a thin basis for a small delta, and anything under a few per
+cent on this page should be read as unproven rather than as a result.</p>
+<p>The simulator is kinder than the air: no multipath, no body loss, no oscillator error, no
+interference beyond the mesh's own traffic. Every one of those omissions makes real links worse, so
+the absolute numbers are a best case and the comparison is the finding.</p>
+<p>The MeshCore branch carrying this change is local and is not pushed anywhere.</p>
+
+</div>
+<footer>MeshBench, 12 August 2026. Real MeshCore firmware, one operating-system process per node, against
+a sample accurate LoRa channel and bare-earth terrain. Figures are measured output; the
+interpretation and the prose are Claude Opus 5's.</footer>
+</div></body></html>
