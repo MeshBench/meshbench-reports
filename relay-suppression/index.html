@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A third of the airtime, already written and switched off</title>
+<meta name="description" content="MeshCore ships a relay-ordering mechanism disabled. Restoring it and adding one check cuts transmissions by about 30% on a 308 node network with no delivery cost.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
+</head>
+<body>
+
+<style>
+  :root{--ground:#faf9f6;--card:#fff;--sunk:#f0eee8;--ink:#191d1c;--dim:#585f5d;
+        --faint:#838a88;--rule:#dcd9d1;--accent:#12695a;--warn:#9a5a1e;--bad:#a33f2f;
+        --good:#3f6b2c;--measure:66ch}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;--dim:#98a3a0;
+    --faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;--bad:#e08a76;--good:#a7c77e}}
+  :root[data-theme="dark"]{--ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;
+    --dim:#98a3a0;--faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;
+    --bad:#e08a76;--good:#a7c77e}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);margin:0;padding:0 22px 90px;
+       font:17px/1.62 Charter,"Bitstream Charter",Georgia,serif}
+  .wrap{max-width:1060px;margin:0 auto}.col{max-width:var(--measure)}
+  code,th,.mono{font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace}
+  header{border-bottom:2px solid var(--ink);padding:52px 0 20px;margin-bottom:30px}
+  .eyebrow{font:12px ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--faint);display:flex;gap:18px;flex-wrap:wrap;margin-bottom:20px}
+  h1{font:600 clamp(27px,4.2vw,42px)/1.12 ui-monospace,Menlo,monospace;letter-spacing:-.02em;
+     margin:0 0 16px;max-width:24ch;text-wrap:balance}
+  .stand{font-size:20px;line-height:1.5;color:var(--dim);max-width:62ch;margin:0}
+  h2{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
+     color:var(--accent);margin:56px 0 4px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+  h3{font:600 17px ui-monospace,Menlo,monospace;margin:30px 0 6px}
+  p{margin:0 0 17px}
+  .box{background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--accent);
+       padding:22px 24px;margin:26px 0 10px}
+  .box.warn{border-left-color:var(--warn)}.box.bad{border-left-color:var(--bad)}
+  .box .lab{font:11px ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
+            color:var(--accent);display:block;margin-bottom:9px}
+  .box.warn .lab{color:var(--warn)}.box.bad .lab{color:var(--bad)}
+  .box p{margin:0;font-size:19px;max-width:60ch}
+  .box p+p{margin-top:12px;font-size:16.5px;color:var(--dim)}
+  table{border-collapse:collapse;width:100%;font:13.5px ui-monospace,Menlo,monospace;
+        font-variant-numeric:tabular-nums}
+  th{text-align:right;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+     font-weight:600;padding:0 12px 8px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+  th:first-child{text-align:left}
+  td{padding:7px 12px 7px 0;border-bottom:1px solid var(--rule);white-space:nowrap;text-align:right}
+  td:first-child{text-align:left}
+  tr.sep td{border-top:2px solid var(--rule)}
+  td.txt{font-family:Charter,Georgia,serif;white-space:normal;text-align:left}
+  .same{color:var(--faint)}.up{color:var(--bad)}.dn{color:var(--good)}
+  .scroll{overflow-x:auto}
+  figure{margin:26px 0;background:var(--card);border:1px solid var(--rule);padding:20px 22px 16px}
+  figcaption{font-size:14px;color:var(--dim);margin-top:13px;padding-top:11px;
+             border-top:1px solid var(--rule);max-width:78ch}
+  figcaption b{display:block;color:var(--ink);font:600 12px ui-monospace,Menlo,monospace;
+               letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+  pre{background:var(--sunk);border:1px solid var(--rule);border-left:3px solid var(--accent);
+      padding:13px 15px;overflow-x:auto;font-size:13px;line-height:1.55;margin:0 0 17px}
+  ul,ol{padding-left:21px;max-width:var(--measure)}li{margin-bottom:9px}
+  svg{display:block;max-width:100%;height:auto;color:var(--ink)}
+  footer{margin-top:64px;padding-top:18px;border-top:2px solid var(--ink);
+         font:12px ui-monospace,Menlo,monospace;color:var(--faint);line-height:1.7}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:120px;margin:6px 0 4px}
+  .bars div{background:var(--accent);width:46px;border-radius:2px 2px 0 0}
+  .barlab{display:flex;gap:3px;font:11px ui-monospace,Menlo,monospace;color:var(--faint)}
+  .barlab span{width:46px;text-align:center}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  blockquote{margin:24px 0;padding:18px 22px;background:var(--card);border:1px solid var(--rule);
+             border-left:4px solid var(--accent);max-width:70ch}
+  blockquote p{font-size:17px;margin:0 0 12px;font-style:italic;color:var(--ink)}
+  blockquote cite{display:block;font:11px ui-monospace,Menlo,monospace;font-style:normal;
+                  color:var(--faint);letter-spacing:.04em;margin-top:4px}
+  .box p{font-size:18px}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow"><span>MeshBench</span><span>ScotMesh and Ireland, 308 nodes</span>
+  <span>MeshCore 727fc05</span><span>August 2026</span></div>
+  <h1>A third of the airtime, already written and switched off</h1>
+  <p class="stand">MeshCore contains the machinery to decide which node relays a flood first. It
+  ships disabled, with a comment saying so. Turning it back on and adding one check cuts
+  transmissions by about 30% across Scotland and Ireland, and every node still hears every
+  message.</p>
+</header>
+
+<div class="col">
+<h2>The finding</h2>
+
+<p>A repeater that hears a flood has to decide whether to rebroadcast it. MeshCore already
+scores each reception by signal quality and can hold a packet in proportion to that score,
+so the best placed node transmits first and the others learn they are not needed. The
+function is <code>calcRxDelay()</code>, it is three lines, and it works.</p>
+
+<p>It returns zero. <code>examples/simple_repeater/MyMesh.cpp</code> sets
+<code>_prefs.rx_delay_base = 0.0f;</code> and the comment beside it reads
+<code>// turn off by default, was 10.0;</code>. The companion firmware carries the same value
+with a stronger note: <code>// enable once new algo fixed</code>. With it at zero every node
+in range relays the instant it receives, and the score that decides who is best placed is
+never consulted.</p>
+
+<div class="box">
+<span class="lab">What was measured</span>
+<p>Restoring the delay to the value the comment names, and adding one check so a node drops
+its own relay when it hears somebody else send the same packet, reduced transmissions from
+518 to between 327 and 395 on a 308 node network. Delivery was unchanged: all 308 nodes in
+every run.</p>
+<p>The two changes are separable, and neither works without the other. Suppression on its own
+measured exactly zero, because with the delay off there is no interval during which a node is
+holding a packet to suppress.</p>
+</div>
+
+<h2>Where the gap is</h2>
+</div>
+
+<figure>
+<pre class="mono">  what happens to a flood packet when it arrives
+
+  +----------------------------------------------------------+
+  | a flood packet arrives                                   |   
+  |  Dispatcher::checkRecv()                                 |
+  +----------------------------------------------------------+
+  | calcRxDelay(score, airtime)                              |   <- the mechanism
+  |  hold longer if somebody else is better placed           |
+  +----------------------------------------------------------+
+  | shipped: rx_delay_base = 0, so this returns 0            |   OFF
+  |   every node relays on receipt, score unused             |
+  +----------------------------------------------------------+
+  | held in the inbound queue                                |   
+  |  somebody else may send it while we wait                 |
+  +----------------------------------------------------------+
+  : nothing watches for that. our copy goes out              :   MISSING
+  :   anyway when the timer expires                          :
+  '..........................................................'</pre>
+<figcaption><b>Figure 1: the relay decision, and the two places it stops short</b>
+The hold is implemented and disabled. The suppression it would enable was never written:
+nothing in <code>Mesh.cpp</code>, <code>Dispatcher.cpp</code> or the repeater ever cancels a
+queued relay, and <code>removeOutboundByIdx()</code> exists on the packet manager without a
+caller for this. The delay was built as a race and never became a suppression.</figcaption>
+</figure>
+
+<div class="col">
+<h2>Results</h2>
+
+<p>Two seeds on the 308 node import of ScotMesh and Ireland, native firmware, EU/UK Narrow.
+One repeater originates a single advert and the mesh does the rest.</p>
+</div>
+
+<div class="scroll">
+<table>
+<tr><th>arm</th><th>tx seed 1</th><th>tx seed 2</th><th>duplicate rx</th><th>delivered</th></tr>
+<tr><td>as shipped</td><td>518</td><td>518</td><td>3526 / 3562</td><td class="same">308 / 308</td></tr>
+<tr><td>delay restored to 10.0</td><td class="dn">450</td><td class="dn">443</td><td class="up">4496 / 4640</td><td class="same">308 / 308</td></tr>
+<tr class="sep"><td>delay and suppression</td><td class="dn">327</td><td class="dn">395</td><td class="dn">2690 / 3406</td><td class="same">308 / 308</td></tr>
+</table>
+</div>
+
+<figure>
+<pre class="mono">  transmissions to cover 308 nodes, one advert
+
+  as shipped          ####################################################  518
+  delay restored      #############################################         450
+  delay + suppression #################################                     327
+
+  every arm delivered to all 308 nodes</pre>
+<figcaption><b>Figure 2: transmissions needed to reach the whole network</b>
+Mean 361 against 518, a reduction of about 30%. The middle arm is worth reading carefully:
+restoring the delay alone lowers transmissions but <em>raises</em> duplicate receptions,
+because spreading relays out in time means more of them are heard cleanly rather than
+colliding. Suppression is what converts that into a saving.</figcaption>
+</figure>
+
+<div class="col">
+<h2>What would have made this wrong</h2>
+
+<p>Three faults produced confident, symmetrical, entirely false results before any of the
+above was true. Each was caught by a control arm that is the baseline built twice under two
+names, and compared against itself.</p>
+
+<div class="box bad">
+<span class="lab">Saved state beats a compiled default</span>
+<p>The first run of all three arms on the 308 node network returned byte identical numbers.
+The nodes carried <code>prefs.json</code> from an earlier study containing
+<code>rxdelay:0</code>, so the firmware loaded the old value and the changed default was
+never reached.</p>
+<p>This generalises past this study. An A/B test on a compiled default measures nothing at all
+on any scenario whose nodes have run before, and it fails silently and identically in both
+arms, which is the worst way for a test to fail.</p>
+</div>
+
+<div class="box bad">
+<span class="lab">The build system replayed the previous arm</span>
+<p>Go caches a test result against the package, its inputs and the environment variables the
+test reads. It does not track the contents of a binary that an environment variable merely
+points at. Rebuilding an arm and running it again returned the previous arm's numbers, which
+reads exactly like a change that did nothing.</p>
+</div>
+
+<div class="box warn">
+<span class="lab">The idea was implemented in the wrong queue</span>
+<p>The first attempt cancelled the outbound queue. Flood packets are held on the inbound side,
+so at the moment a duplicate arrives there is nothing queued outbound and the code could not
+fire. The control arm made this legible in one run: exactly identical numbers, rather than a
+plausible small delta that would have been believed.</p>
+</div>
+
+<h2>Limits</h2>
+
+<p>Two seeds, not twenty. Transmissions in the suppression arm ranged from 327 to 395, so the
+30% figure is a mean of a spread rather than a stable constant. The direction was consistent
+and delivery never moved, which is what makes it worth reporting at this sample size.</p>
+
+<p>An earlier study on this simulator established a measurement floor of about 20% with eight
+simultaneous senders. That floor does not apply here and it is worth saying why: it is a
+property of contention. A single originator flood is deterministic, and the control arm
+returned 518 transmissions on both seeds, to the unit. Anything with concurrent senders should
+still be read against the floor.</p>
+
+<p>The simulator is kinder than the air: no multipath, no body loss, no oscillator error.
+Every result here is a best case. A saving measured in a best case is likely to be real
+outdoors, where collisions are more expensive rather than less.</p>
+
+<p>The network is a saved import of real ScotMesh and Irish node positions, not a lattice. The
+same changes were also measured on a regular grid and moved in the same direction, which is
+some evidence the effect is not an artefact of one topology.</p>
+
+<h2>What this is worth</h2>
+
+<p>The interesting part is not the number. It is that the mechanism is already written, already
+in the tree, and disabled behind a comment that says it awaits a fix. Whatever is unfinished
+about it, the measurement suggests the thing it was written to do is worth about a third of the
+airtime on a real network, and that the piece it is missing is a single check performed while
+the packet is already being held.</p>
+
+<p>That belongs with the people who wrote it.</p>
+</div>
+</div>
+</body>
+</html>
