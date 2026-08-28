@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="MeshBench">
+  <path d="M 10.00 35.00 L 17.00 43.00" stroke="#5B3BD6" stroke-width="2.2" opacity="0.38"/>
+  <path d="M 17.00 43.00 L 32.00 31.00" stroke="#5B3BD6" stroke-width="2.2" opacity="0.38"/>
+  <path d="M 21.00 24.00 L 28.00 10.00" stroke="#5B3BD6" stroke-width="2.2" opacity="0.38"/>
+  <path d="M 10.00 35.00 L 21.00 24.00" stroke="#E8500F" stroke-width="4.0"/>
+  <path d="M 21.00 24.00 L 32.00 31.00" stroke="#E8500F" stroke-width="4.0"/>
+  <path d="M 32.00 31.00 L 39.00 15.00" stroke="#E8500F" stroke-width="4.0"/>
+  <circle cx="21.00" cy="24.00" r="4.40" fill="#14131F"/>
+  <circle cx="32.00" cy="31.00" r="4.40" fill="#14131F"/>
+  <circle cx="10.00" cy="35.00" r="5.60" fill="#E8500F"/>
+  <circle cx="39.00" cy="15.00" r="5.60" fill="#14131F"/>
+</svg>

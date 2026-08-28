@@ -5,80 +5,32 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Testing 1.17 listen-before-talk on a radio that lies</title>
 <meta name="description" content="Injecting the stuck-IRQ fault MeshCore 1.17 was written to survive, and measuring the difference against 1.16.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
+<link rel="icon" href="../brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../styles.css">
 </head>
 <body>
 
-<style>
-  :root{--ground:#faf9f6;--card:#fff;--sunk:#f0eee8;--ink:#191d1c;--dim:#585f5d;
-        --faint:#838a88;--rule:#dcd9d1;--accent:#12695a;--warn:#9a5a1e;--bad:#a33f2f;
-        --good:#3f6b2c;--measure:66ch}
-  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-    --ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;--dim:#98a3a0;
-    --faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;--bad:#e08a76;--good:#a7c77e}}
-  :root[data-theme="dark"]{--ground:#0d1211;--card:#151b1a;--sunk:#111615;--ink:#e6eae8;
-    --dim:#98a3a0;--faint:#78827f;--rule:#232c2a;--accent:#5cbfa8;--warn:#dd9e69;
-    --bad:#e08a76;--good:#a7c77e}
-  *{box-sizing:border-box}
-  body{background:var(--ground);color:var(--ink);margin:0;padding:0 22px 90px;
-       font:17px/1.62 Charter,"Bitstream Charter",Georgia,serif}
-  .wrap{max-width:1060px;margin:0 auto}.col{max-width:var(--measure)}
-  code,th,.mono{font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace}
-  header{border-bottom:2px solid var(--ink);padding:52px 0 20px;margin-bottom:30px}
-  .eyebrow{font:12px ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;
-           color:var(--faint);display:flex;gap:18px;flex-wrap:wrap;margin-bottom:20px}
-  h1{font:600 clamp(27px,4.2vw,42px)/1.12 ui-monospace,Menlo,monospace;letter-spacing:-.02em;
-     margin:0 0 16px;max-width:24ch;text-wrap:balance}
-  .stand{font-size:20px;line-height:1.5;color:var(--dim);max-width:62ch;margin:0}
-  h2{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
-     color:var(--accent);margin:56px 0 4px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
-  h3{font:600 17px ui-monospace,Menlo,monospace;margin:30px 0 6px}
-  p{margin:0 0 17px}
-  .box{background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--accent);
-       padding:22px 24px;margin:26px 0 10px}
-  .box.warn{border-left-color:var(--warn)}.box.bad{border-left-color:var(--bad)}
-  .box .lab{font:11px ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;
-            color:var(--accent);display:block;margin-bottom:9px}
-  .box.warn .lab{color:var(--warn)}.box.bad .lab{color:var(--bad)}
-  .box p{margin:0;font-size:19px;max-width:60ch}
-  .box p+p{margin-top:12px;font-size:16.5px;color:var(--dim)}
-  table{border-collapse:collapse;width:100%;font:13.5px ui-monospace,Menlo,monospace;
-        font-variant-numeric:tabular-nums}
-  th{text-align:right;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
-     font-weight:600;padding:0 12px 8px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
-  th:first-child{text-align:left}
-  td{padding:7px 12px 7px 0;border-bottom:1px solid var(--rule);white-space:nowrap;text-align:right}
-  td:first-child{text-align:left}
-  tr.sep td{border-top:2px solid var(--rule)}
-  td.txt{font-family:Charter,Georgia,serif;white-space:normal;text-align:left}
-  .same{color:var(--faint)}.up{color:var(--bad)}.dn{color:var(--good)}
-  .scroll{overflow-x:auto}
-  figure{margin:26px 0;background:var(--card);border:1px solid var(--rule);padding:20px 22px 16px}
-  figcaption{font-size:14px;color:var(--dim);margin-top:13px;padding-top:11px;
-             border-top:1px solid var(--rule);max-width:78ch}
-  figcaption b{display:block;color:var(--ink);font:600 12px ui-monospace,Menlo,monospace;
-               letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
-  pre{background:var(--sunk);border:1px solid var(--rule);border-left:3px solid var(--accent);
-      padding:13px 15px;overflow-x:auto;font-size:13px;line-height:1.55;margin:0 0 17px}
-  ul,ol{padding-left:21px;max-width:var(--measure)}li{margin-bottom:9px}
-  svg{display:block;max-width:100%;height:auto;color:var(--ink)}
-  footer{margin-top:64px;padding-top:18px;border-top:2px solid var(--ink);
-         font:12px ui-monospace,Menlo,monospace;color:var(--faint);line-height:1.7}
-  .bars{display:flex;gap:3px;align-items:flex-end;height:120px;margin:6px 0 4px}
-  .bars div{background:var(--accent);width:46px;border-radius:2px 2px 0 0}
-  .barlab{display:flex;gap:3px;font:11px ui-monospace,Menlo,monospace;color:var(--faint)}
-  .barlab span{width:46px;text-align:center}
-  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-
-  blockquote{margin:24px 0;padding:18px 22px;background:var(--card);border:1px solid var(--rule);
-             border-left:4px solid var(--accent);max-width:70ch}
-  blockquote p{font-size:17px;margin:0 0 12px;font-style:italic;color:var(--ink)}
-  blockquote cite{display:block;font:11px ui-monospace,Menlo,monospace;font-style:normal;
-                  color:var(--faint);letter-spacing:.04em;margin-top:4px}
-  .box p{font-size:18px}
-</style>
-
-<div class="wrap">
+<div class="brandbar wide"><a href="https://meshbench.github.io/" aria-label="MeshBench"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 324.6 49.2" fill="none" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="MeshBench"><g transform="translate(-6.25,-11.31) scale(1.3300)">
+  <path d="M 9.50 34.50 L 18.00 43.00" stroke="currentColor" stroke-width="1.8" opacity="0.26"/>
+  <path d="M 18.00 43.00 L 32.00 30.50" stroke="currentColor" stroke-width="1.8" opacity="0.26"/>
+  <path d="M 18.00 43.00 L 20.50 23.00" stroke="currentColor" stroke-width="1.8" opacity="0.26"/>
+  <path d="M 20.50 23.00 L 29.50 11.00" stroke="currentColor" stroke-width="1.8" opacity="0.26"/>
+  <path d="M 29.50 11.00 L 40.50 19.50" stroke="currentColor" stroke-width="1.8" opacity="0.26"/>
+  <path d="M 32.00 30.50 L 39.00 40.00" stroke="currentColor" stroke-width="1.8" opacity="0.26"/>
+  <path d="M 40.50 19.50 L 39.00 40.00" stroke="currentColor" stroke-width="1.8" opacity="0.26"/>
+  <path d="M 9.50 34.50 L 29.50 11.00" stroke="currentColor" stroke-width="1.8" opacity="0.26"/>
+  <path d="M 9.50 34.50 L 20.50 23.00" stroke="currentColor" stroke-width="3.2"/>
+  <path d="M 20.50 23.00 L 32.00 30.50" stroke="currentColor" stroke-width="3.2"/>
+  <path d="M 32.00 30.50 L 40.50 19.50" stroke="currentColor" stroke-width="3.2"/>
+  <circle cx="18.00" cy="43.00" r="2.50" fill="currentColor" opacity="0.4"/>
+  <circle cx="29.50" cy="11.00" r="2.50" fill="currentColor" opacity="0.4"/>
+  <circle cx="39.00" cy="40.00" r="2.50" fill="currentColor" opacity="0.4"/>
+  <circle cx="20.50" cy="23.00" r="3.80" fill="currentColor"/>
+  <circle cx="32.00" cy="30.50" r="3.80" fill="currentColor"/>
+  <circle cx="9.50" cy="34.50" r="4.80" fill="currentColor"/>
+  <circle cx="40.50" cy="19.50" r="4.80" fill="currentColor"/>
+</g><g transform="translate(70.0,40.7)" fill="currentColor"><path d="M3.04 0V-32.2H14.31L19.87 -4.14H20.7L26.27 -32.2H37.54V0H31.65V-27.74H30.82L25.3 0H15.27L9.75 -27.74H8.92V0Z M53.36 0.64Q49.96 0.64 47.36 -0.8Q44.76 -2.25 43.31 -4.9Q41.86 -7.54 41.86 -11.13V-11.68Q41.86 -15.27 43.29 -17.92Q44.71 -20.56 47.29 -22.01Q49.86 -23.46 53.27 -23.46Q56.63 -23.46 59.11 -21.96Q61.59 -20.47 62.97 -17.82Q64.35 -15.18 64.35 -11.68V-9.71H47.75Q47.84 -7.36 49.5 -5.89Q51.15 -4.42 53.54 -4.42Q55.98 -4.42 57.13 -5.47Q58.28 -6.53 58.88 -7.82L63.62 -5.34Q62.97 -4.14 61.76 -2.74Q60.54 -1.33 58.51 -0.35Q56.49 0.64 53.36 0.64ZM47.79 -14.03H58.47Q58.28 -16.01 56.88 -17.2Q55.48 -18.4 53.22 -18.4Q50.88 -18.4 49.5 -17.2Q48.12 -16.01 47.79 -14.03Z M78.15 0.64Q73.69 0.64 70.84 -1.29Q67.99 -3.22 67.39 -6.81L72.73 -8.19Q73.05 -6.58 73.81 -5.66Q74.57 -4.74 75.69 -4.35Q76.82 -3.96 78.15 -3.96Q80.18 -3.96 81.14 -4.67Q82.11 -5.38 82.11 -6.44Q82.11 -7.5 81.19 -8.07Q80.27 -8.65 78.25 -9.02L76.96 -9.25Q74.57 -9.71 72.59 -10.51Q70.61 -11.32 69.41 -12.74Q68.22 -14.17 68.22 -16.42Q68.22 -19.83 70.7 -21.64Q73.19 -23.46 77.23 -23.46Q81.05 -23.46 83.58 -21.76Q86.11 -20.06 86.89 -17.3L81.51 -15.64Q81.14 -17.39 80.02 -18.12Q78.89 -18.86 77.23 -18.86Q75.58 -18.86 74.7 -18.29Q73.83 -17.71 73.83 -16.7Q73.83 -15.59 74.75 -15.06Q75.67 -14.54 77.23 -14.26L78.52 -14.03Q81.1 -13.57 83.19 -12.81Q85.28 -12.05 86.5 -10.65Q87.72 -9.25 87.72 -6.85Q87.72 -3.27 85.12 -1.31Q82.52 0.64 78.15 0.64Z M91.95 0V-32.2H97.75V-20.01H98.58Q98.95 -20.75 99.73 -21.48Q100.51 -22.22 101.82 -22.7Q103.13 -23.18 105.16 -23.18Q107.82 -23.18 109.82 -21.96Q111.83 -20.75 112.93 -18.61Q114.03 -16.47 114.03 -13.62V0H108.24V-13.16Q108.24 -15.73 106.97 -17.02Q105.71 -18.31 103.36 -18.31Q100.69 -18.31 99.22 -16.54Q97.75 -14.77 97.75 -11.59V0Z M118.36 0V-5.34H122.59V-26.86H118.36V-32.2H134.92Q137.86 -32.2 140.05 -31.21Q142.23 -30.22 143.45 -28.41Q144.67 -26.59 144.67 -24.06V-23.6Q144.67 -21.39 143.84 -19.99Q143.01 -18.58 141.89 -17.82Q140.76 -17.07 139.75 -16.74V-15.92Q140.76 -15.64 141.96 -14.88Q143.15 -14.12 144 -12.7Q144.85 -11.27 144.85 -8.97V-8.51Q144.85 -5.84 143.61 -3.93Q142.37 -2.02 140.19 -1.01Q138 0 135.1 0ZM128.66 -5.52H134.37Q136.34 -5.52 137.56 -6.49Q138.78 -7.45 138.78 -9.25V-9.71Q138.78 -11.5 137.59 -12.47Q136.39 -13.43 134.37 -13.43H128.66ZM128.66 -18.95H134.27Q136.16 -18.95 137.38 -19.92Q138.6 -20.88 138.6 -22.59V-23.05Q138.6 -24.79 137.4 -25.74Q136.21 -26.68 134.27 -26.68H128.66Z M159.57 0.64Q156.17 0.64 153.57 -0.8Q150.97 -2.25 149.52 -4.9Q148.07 -7.54 148.07 -11.13V-11.68Q148.07 -15.27 149.5 -17.92Q150.93 -20.56 153.5 -22.01Q156.08 -23.46 159.48 -23.46Q162.84 -23.46 165.32 -21.96Q167.81 -20.47 169.19 -17.82Q170.57 -15.18 170.57 -11.68V-9.71H153.96Q154.05 -7.36 155.71 -5.89Q157.37 -4.42 159.76 -4.42Q162.2 -4.42 163.35 -5.47Q164.5 -6.53 165.09 -7.82L169.83 -5.34Q169.19 -4.14 167.97 -2.74Q166.75 -1.33 164.73 -0.35Q162.7 0.64 159.57 0.64ZM154.01 -14.03H164.68Q164.5 -16.01 163.09 -17.2Q161.69 -18.4 159.44 -18.4Q157.09 -18.4 155.71 -17.2Q154.33 -16.01 154.01 -14.03Z M174.89 0V-22.82H180.6V-19.83H181.42Q181.98 -21.02 183.49 -22.1Q185.01 -23.18 188.09 -23.18Q190.76 -23.18 192.76 -21.96Q194.76 -20.75 195.87 -18.61Q196.97 -16.47 196.97 -13.62V0H191.18V-13.16Q191.18 -15.73 189.91 -17.02Q188.65 -18.31 186.3 -18.31Q183.63 -18.31 182.16 -16.54Q180.69 -14.77 180.69 -11.59V0Z M213.12 0.64Q209.81 0.64 207.12 -0.74Q204.42 -2.12 202.86 -4.74Q201.3 -7.36 201.3 -11.09V-11.73Q201.3 -15.46 202.86 -18.08Q204.42 -20.7 207.12 -22.08Q209.81 -23.46 213.12 -23.46Q216.38 -23.46 218.73 -22.31Q221.08 -21.16 222.53 -19.16Q223.97 -17.16 224.43 -14.63L218.82 -13.43Q218.64 -14.81 217.99 -15.92Q217.35 -17.02 216.18 -17.66Q215 -18.31 213.26 -18.31Q211.51 -18.31 210.11 -17.55Q208.7 -16.79 207.9 -15.29Q207.09 -13.8 207.09 -11.64V-11.18Q207.09 -9.02 207.9 -7.52Q208.7 -6.03 210.11 -5.27Q211.51 -4.51 213.26 -4.51Q215.88 -4.51 217.24 -5.87Q218.59 -7.22 218.96 -9.43L224.57 -8.1Q223.97 -5.66 222.53 -3.66Q221.08 -1.66 218.73 -0.51Q216.38 0.64 213.12 0.64Z M228.53 0V-32.2H234.32V-20.01H235.15Q235.52 -20.75 236.3 -21.48Q237.08 -22.22 238.39 -22.7Q239.71 -23.18 241.73 -23.18Q244.4 -23.18 246.4 -21.96Q248.4 -20.75 249.5 -18.61Q250.61 -16.47 250.61 -13.62V0H244.81V-13.16Q244.81 -15.73 243.55 -17.02Q242.28 -18.31 239.94 -18.31Q237.27 -18.31 235.8 -16.54Q234.32 -14.77 234.32 -11.59V0Z"/></g></svg></a></div>
+<div class="wrap wide">
 <header>
   <div class="eyebrow"><span>MeshBench</span><span>ScotMesh, 154 nodes</span>
     <span>MeshCore 1.16.0 vs 1.17.0</span><span>14 runs</span></div>
