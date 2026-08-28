@@ -1,0 +1,149 @@
+/* MeshBench reports. Tokens and type from MeshBench/brand.
+
+   The one rule the palette carries: orange is Signal. Here that means it marks
+   the measured quantity and the finding that carried - the bars, the headline
+   result, a hot cell - and nothing else. Structure (section markers, code
+   rules) is Relay violet; status is the brand's own pass/warn/fail, never
+   orange. */
+@import url("brand/webfonts/meshbench-fonts.css");
+
+:root {
+  --bg:#FFFFFF; --panel:#F5F3FA; --sunk:#EEEBF7;
+  --ink:#14131F; --dim:#6A6480; --faint:#938DAD; --line:#E4E0F1;
+  --signal:#E8500F; --link:#B93B06; --relay:#5B3BD6;
+  --pass:#1B7A44; --warn:#8A6200; --fail:#B22232;
+  --display:"MeshBench Display", ui-sans-serif, system-ui, sans-serif;
+  --text:"MeshBench Text", ui-sans-serif, system-ui, sans-serif;
+  --mono:"MeshBench Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --measure:66ch;
+}
+@media (prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#0B0A12; --panel:#15131F; --sunk:#100E19;
+    --ink:#F2EFF9; --dim:#9A93B8; --faint:#6A6480; --line:#262238;
+    --signal:#FF7A3D; --link:#FF7A3D; --relay:#8E6DFF;
+    --pass:#2EBD6B; --warn:#F2B705; --fail:#E23D4E;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#0B0A12; --panel:#15131F; --sunk:#100E19;
+  --ink:#F2EFF9; --dim:#9A93B8; --faint:#6A6480; --line:#262238;
+  --signal:#FF7A3D; --link:#FF7A3D; --relay:#8E6DFF;
+  --pass:#2EBD6B; --warn:#F2B705; --fail:#E23D4E;
+}
+
+* { box-sizing:border-box; }
+* { scrollbar-width:thin; scrollbar-color:var(--line) transparent; }
+::-webkit-scrollbar { width:10px; height:10px; }
+::-webkit-scrollbar-thumb { background:var(--line); border-radius:6px;
+  border:2px solid transparent; background-clip:padding-box; }
+::-webkit-scrollbar-thumb:hover { background:var(--dim); background-clip:padding-box; }
+html { scroll-behavior:smooth; }
+@media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+
+body { background:var(--bg); color:var(--ink); margin:0; padding:0 22px 90px;
+  font:17px/1.65 var(--text); -webkit-font-smoothing:antialiased; }
+.wrap { max-width:840px; margin:0 auto; }
+.wrap.wide { max-width:1060px; }
+.col { max-width:var(--measure); }
+p { margin:0 0 17px; max-width:var(--measure); }
+a { color:var(--link); text-underline-offset:3px; }
+code, th, td.mono, .mono { font-family:var(--mono); }
+:focus-visible { outline:2px solid var(--signal); outline-offset:3px; border-radius:5px; }
+
+/* masthead: the wordmark ties the page to the brand. Inlined and drawn in
+   currentColor so it follows the theme - ink on paper, paper on basalt -
+   which an <img> of a currentColor SVG cannot do. */
+.brandbar { max-width:840px; margin:0 auto; padding:26px 0 0; }
+.brandbar.wide { max-width:1060px; }
+.brandbar a { color:var(--ink); display:inline-block; line-height:0; }
+.brandbar svg { width:150px; height:auto; display:block; }
+
+/* header --------------------------------------------------------------- */
+header { border-bottom:1px solid var(--line); padding:40px 0 24px; margin-bottom:34px; }
+.eyebrow { font-family:var(--mono); font-size:12px; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--relay); display:flex; gap:18px;
+  flex-wrap:wrap; align-items:center; margin-bottom:20px; }
+.eyebrow::before { content:""; width:26px; height:2px; background:var(--signal);
+  border-radius:2px; flex:none; }
+h1 { font-family:var(--display); font-weight:700; letter-spacing:-.02em;
+  line-height:1.12; text-wrap:balance; margin:0 0 16px;
+  font-size:clamp(28px,4.6vw,44px); max-width:24ch; }
+.stand { font-size:20px; line-height:1.5; color:var(--dim); max-width:62ch; margin:0; }
+
+/* sections ------------------------------------------------------------- */
+h2 { font-family:var(--mono); font-weight:700; font-size:12px; line-height:1;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--relay);
+  margin:56px 0 6px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+h3 { font-family:var(--display); font-weight:700; letter-spacing:-.01em;
+  font-size:18px; margin:30px 0 6px; }
+
+/* report cards (index) ------------------------------------------------- */
+.report { display:block; background:var(--panel); border:1px solid var(--line);
+  border-left:3px solid var(--signal); border-radius:0 13px 13px 0;
+  padding:24px 26px; margin:22px 0; text-decoration:none; color:inherit;
+  transition:transform .12s ease; }
+.report:hover, .report:focus-visible { transform:translateX(3px); }
+.report h3 { font-size:21px; margin:0 0 10px; color:var(--ink); }
+.report p { font-size:16.5px; color:var(--dim); margin:0 0 12px; max-width:64ch; }
+.meta { font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--faint); display:flex; gap:16px; flex-wrap:wrap; }
+
+/* callouts: default is the finding that carried (Signal); status uses
+   the brand's status colours, never orange --------------------------- */
+.box { background:var(--panel); border:1px solid var(--line);
+  border-left:3px solid var(--signal); border-radius:0 13px 13px 0;
+  padding:22px 24px; margin:26px 0 10px; }
+.box.warn { border-left-color:var(--warn); }
+.box.bad { border-left-color:var(--fail); }
+.box .lab { font-family:var(--mono); font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--signal); display:block; margin-bottom:9px; }
+.box.warn .lab { color:var(--warn); }
+.box.bad .lab { color:var(--fail); }
+.box p { margin:0; font-size:19px; max-width:60ch; }
+.box p + p { margin-top:12px; font-size:16.5px; color:var(--dim); }
+
+/* tables --------------------------------------------------------------- */
+.scroll { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-family:var(--mono);
+  font-size:13.5px; font-variant-numeric:tabular-nums; }
+th { text-align:right; font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--faint); font-weight:700; padding:0 12px 8px 0;
+  border-bottom:1px solid var(--line); white-space:nowrap; }
+th:first-child { text-align:left; }
+td { padding:7px 12px 7px 0; border-bottom:1px solid var(--line);
+  white-space:nowrap; text-align:right; }
+td:first-child { text-align:left; }
+tr.sep td { border-top:2px solid var(--line); }
+td.txt { font-family:var(--text); white-space:normal; text-align:left; }
+.same { color:var(--faint); }
+.up { color:var(--fail); }
+.dn { color:var(--pass); }
+
+/* figures, code, lists ------------------------------------------------- */
+figure { margin:26px 0; background:var(--panel); border:1px solid var(--line);
+  border-radius:13px; padding:20px 22px 16px; }
+figcaption { font-size:14px; color:var(--dim); margin-top:13px; padding-top:11px;
+  border-top:1px solid var(--line); max-width:78ch; }
+figcaption b { display:block; color:var(--ink); font-family:var(--mono);
+  font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+  margin-bottom:4px; }
+pre { background:var(--sunk); border:1px solid var(--line);
+  border-left:3px solid var(--relay); border-radius:0 8px 8px 0;
+  padding:13px 15px; overflow-x:auto; font-family:var(--mono);
+  font-size:13px; line-height:1.55; margin:0 0 17px; }
+code { font-size:.9em; }
+ul, ol { padding-left:21px; max-width:var(--measure); }
+li { margin-bottom:9px; }
+svg { display:block; max-width:100%; height:auto; color:var(--ink); }
+
+/* the measured quantity is Signal ------------------------------------- */
+.bars { display:flex; gap:3px; align-items:flex-end; height:120px; margin:6px 0 4px; }
+.bars div { background:var(--signal); width:46px; border-radius:2px 2px 0 0; }
+.barlab { display:flex; gap:3px; font-family:var(--mono); font-size:11px; color:var(--faint); }
+.barlab span { width:46px; text-align:center; }
+
+/* footer --------------------------------------------------------------- */
+footer { margin-top:64px; padding-top:18px; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:12px; color:var(--faint); line-height:1.7; }
+footer a { color:var(--link); }

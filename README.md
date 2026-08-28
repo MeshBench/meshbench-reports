@@ -3,7 +3,7 @@
 Studies of how MeshCore actually behaves, run on real firmware against a
 simulated radio and a simulated channel.
 
-Published at <https://a13xb0.github.io/meshbench-reports/>.
+Published at <https://meshbench.github.io/meshbench-reports/>.
 
 MeshBench compiles the real MeshCore application natively, one operating-system
 process per node, and runs it against a model of an SX1262 and a model of the
@@ -28,6 +28,6 @@ loss, no oscillator error, and no interference beyond the mesh's own traffic.
 Every one of those omissions makes real links worse.
 
 The faulty-radio builds used here come from
-[meshcore-native](https://github.com/A13xB0/meshcore-native), which publishes
+[meshcore-native](https://github.com/MeshBench/meshcore-native), which publishes
 host builds of MeshCore alongside `-faultyirq` variants that misbehave the way
 real radios do.
