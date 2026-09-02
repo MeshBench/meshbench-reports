@@ -1,3 +1,9 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand/meshbench-banner-1600x400.png">
+  <source media="(prefers-color-scheme: light)" srcset="brand/meshbench-banner-1600x400-light.png">
+  <img alt="MeshBench: an RF-accurate MeshCore network simulator" src="brand/meshbench-banner-1600x400-light.png">
+</picture>
+
 # MeshBench reports
 
 Studies of how MeshCore actually behaves, run on real firmware against a
